@@ -48,6 +48,10 @@ This cache is cleared by publishing a payload `clear` to topic
 Additionally the ESP can be rebooted by sending the command `reset` to
 topic `esp/mqtt_ot/cmd`.
 
+For instance in MQTT_explorer you can see the following result:
+
+![image](docs/esp_mqtt_ot.png)
+
 ## Over the air update
 
 Using `EspMQTTClient` both web-based update and over-the-air update
