@@ -6,20 +6,14 @@ PORT ?= /dev/ttyUSB0
 
 BOARD ?= esp8266:esp8266:d1_mini_clone
 CLIENT ?= mqtt_ot
-VERSION ?= 0.5
+VERSION ?= 0.6
 
 DEF = --build-property compiler.cpp.extra_flags="-Wall -DCLIENT_NAME=\"$(CLIENT)\" -DVERSION=\"$(VERSION)\""
 
 all: build upload monitor
 
 libs:
-#	arduino-cli lib search EspMQTTClient
-#	arduino-cli lib search OpenTherm\ Library
-#	arduino-cli lib search Dallas
-#	arduino-cli lib search OneWire
-#	arduino-cli lib search DS18B20
-#	arduino-cli lib install EspMQTTClient OpenTherm\ Library DallasTemperature OneWire 
-	arduino-cli lib install EspMQTTClient OpenTherm\ Library DS18B20 OneWire Hashtable
+	arduino-cli lib install EspMQTTClient OpenTherm\ Library DS18B20 OneWire
 
 upgrade-libs:
 	arduino-cli lib update-index

@@ -10,7 +10,6 @@ Date: Aug, 2024
 */
 
 #include <Arduino.h>
-#include <Hashtable.h>
 #include <OpenTherm.h>
 #include <DS18B20.h>
 #include <EspMQTTClient.h>
@@ -31,6 +30,7 @@ Date: Aug, 2024
 
 String  client_name    = CLIENT_NAME;                    // MQTT Topic to report initial value
 String  topic_state    = "esp/"+client_name+"/state";    // MQTT Topic to report status
+String  topic_version  = "esp/"+client_name+"/version";  // MQTT Topic to report version
 String  topic_command  = "esp/"+client_name+"/cmd";      // MQTT Topic to execute command
 String  topic_active   = "esp/"+client_name+"/active";   // MQTT Topic to report active state of OT
 String  topic_master   = "esp/"+client_name+"/master";   // MQTT topic to report master request
@@ -74,27 +74,28 @@ bool ot_active = false;
 
 typedef uint8_t K;
 
-Hashtable<K, uint16_t> otRegsMaster;
-Hashtable<K, uint16_t> otRegsSlave;
+struct otReg {
+  uint16_t reg;
+  uint16_t used;
+};
 
-bool updated(unsigned long frame, Hashtable<K, uint16_t> &d)
+otReg otRegsMaster[256];
+otReg otRegsSlave[256];
+
+
+bool updated(unsigned long frame, otReg d[])
 {
   uint32_t v = frame & 0xffffffff;
   uint16_t data_value = v & 0xffff;
   const K data_id = (v >> 16) & 0xff;
-  // uint8_t spare = (v >> 24) & 0xf;
-  // assert spare == 0, "Spare must be all zero.";
-  uint8_t msg_type = (v >> 28) & 0x7;
-  // bool parity = (v >> 31) & 0x1;
-  // assert self._parity() == 0, "Parity check fails.";
-  if (d.containsKey(data_id)) {
-    uint16_t *prev_value = d.get(data_id);
-    if (*prev_value == data_value)
+  //uint8_t msg_type = (v >> 28) & 0x7;
+  if (d[data_id].used) {
+    uint16_t prev_value = d[data_id].reg;
+    if (prev_value == data_value)
       return false;
-    *prev_value = data_value;
-    return true;
   }
-  d.put(data_id, data_value);
+  d[data_id].reg = data_value;
+  d[data_id].used = 1;
   return true;
 }
 
@@ -135,8 +136,10 @@ static void executeCommand(const String payload)
 {
   if (strncmp(payload.c_str(), "clear", 3) == 0) {
     // Clear the hashtables, such that clients can reinitialize
-    otRegsMaster.clear();
-    otRegsSlave.clear();
+    for (int i = 0; i < 256; i++) {
+      otRegsMaster[i].used = 0;
+      otRegsSlave[i].used = 0;
+    }
   }
   if (strncmp(payload.c_str(), "reset", 3) == 0) {
     // Reboot, such that OT is restarted
@@ -152,8 +155,9 @@ static void executeCommand(const String payload)
 
 void onConnectionEstablished() {
   // MQTT Initial Connection
-  String online = String("online, version ") + String(VERSION);
+  String online = String("online");
   client.publish(topic_state, online, true);
+  client.publish(topic_version, String(VERSION), true);
   Serial.println(online);
   Serial.println("Master pins: " + String(mInPin) + " " + String(mOutPin));
   Serial.println("Slave  pins: " + String(sInPin) + " " + String(sOutPin));  
